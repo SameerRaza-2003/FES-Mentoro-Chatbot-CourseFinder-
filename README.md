@@ -1,7 +1,4 @@
-Here’s a clean, professional **README.md** written specifically for your provided `api.py`.
-It’s clear, detailed, and structured for both developers and deployers 👇
 
----
 
 # 🧠 FES Chatbot API (RAG + Streaming Chat)
 
