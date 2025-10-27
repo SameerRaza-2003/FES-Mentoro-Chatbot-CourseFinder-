@@ -1,0 +1,27 @@
+fes_chatbot_api/
+│
+├── app/
+│   ├── api.py                  # Main FastAPI app with /chat and /stream endpoints
+│   │
+│   ├── core/
+│   │   ├── config.py           # Loads environment variables, sets up OpenAI & Pinecone
+│   │   └── logger.py           # Global logger setup for consistent logging
+│   │
+│   ├── models/
+│   │   └── schema.py           # Pydantic schema for ChatRequest and response models
+│   │
+│   ├── services/
+│   │   ├── openai_service.py   # Handles embeddings and GPT completions
+│   │   ├── pinecone_service.py # Executes vector searches in Pinecone
+│   │   └── rag_service.py      # Builds context and orchestrates the RAG workflow
+│   │
+│   ├── routers/
+│   │   └── chat_router.py      # (Optional) Router for organizing chat endpoints
+│   │
+│   └── utils/
+│       └── contact_utils.py    # Detects and handles contact or branch-related queries
+│
+├── .env                        # Environment variables (API keys, configs)
+├── requirements.txt             # Python dependencies
+├── main.py                      # Alternative entry point (if used instead of api.py)
+└── README.md                    # Project documentation
