@@ -25,3 +25,6 @@ fes_chatbot_api/
 ├── requirements.txt             # Python dependencies
 ├── main.py                      # Alternative entry point (if used instead of api.py)
 └── README.md                    # Project documentation
+
+From the root folder run this command to run it: 
+uvicorn app.main:app --reload
