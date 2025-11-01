@@ -1,65 +1,39 @@
 
 
-# 🧠 FES Chatbot API (RAG + Streaming Chat)
+# 🧠 FES Chatbot API
 
-This repository hosts the **FES Chatbot API**, also known as **Mentora** — an AI-powered study-abroad counsellor built for **FES Pakistan**.
-It uses **Retrieval-Augmented Generation (RAG)** with **Pinecone** for vector search and **OpenAI GPT models** for contextual chat responses.
-
----
-
-## 🚀 Overview
-
-**Mentora** is a FastAPI-based backend that provides two main endpoints:
-
-1. `/chat` → Non-streaming JSON response (for debugging or API testing)
-2. `/stream` → Streaming chat responses via **Server-Sent Events (SSE)** for smooth frontend integration (e.g., React, Flutter, etc.)
-
-The system combines:
-
-* 🔍 **Pinecone Vector Database** for context retrieval
-* 💬 **OpenAI GPT-4o-mini** for intelligent, structured replies
-* 🌐 **FastAPI** for fast and reliable API serving
-* 🔄 **SSE Streaming** for real-time token generation
+An AI-powered study-abroad counselling backend built with **FastAPI**, **OpenAI GPT models**, and **Pinecone** (RAG-based).
+Supports both standard and streaming chat responses.
 
 ---
 
-## 🧩 Features
-
-✅ **RAG-based Query Handling** — Combines vector search and GPT for context-aware answers
-✅ **Smart Contact Detection** — Instantly returns FES branch details for contact-related queries
-✅ **Structured University Info** — Returns university data in a friendly, readable format
-✅ **Streaming Responses** — Token-by-token generation for chat-like UX
-✅ **Caching Layer** — Speeds up repeated embedding calls
-✅ **CORS Enabled** — Ready for frontend integration
-
----
-
-## 🏗️ Architecture
+## 🧱 Project Structure
 
 ```
-+-----------------------------+
-|          User Query         |
-+-------------+---------------+
-              |
-              v
-     ┌─────────────────────┐
-     │ OpenAI Embeddings   │ ← Generates vector for query
-     └─────────┬───────────┘
-               |
-               v
-     ┌─────────────────────┐
-     │ Pinecone Vector DB  │ ← Retrieves top matching context chunks
-     └─────────┬───────────┘
-               |
-               v
-     ┌─────────────────────┐
-     │ Context Builder     │ ← Formats metadata for GPT
-     └─────────┬───────────┘
-               |
-               v
-     ┌─────────────────────┐
-     │ GPT-4o-mini Model   │ ← Generates final response
-     └─────────────────────┘
+app/
+├── core/
+│   ├── config.py          # Loads environment variables and settings
+│   ├── cors.py            # CORS middleware setup
+│   ├── rate_limit.py      # Request rate limiter (anti-spam)
+│   └── security.py        # Anti-scraping middleware
+│
+├── models/
+│   └── schemas.py         # Pydantic models for request/response validation
+│
+├── routers/
+│   └── chat_router.py     # Chat endpoints (/chat and /stream)
+│
+├── services/
+│   ├── openai_service.py  # Handles OpenAI API (sync + streaming)
+│   ├── pinecone_service.py# Initializes and manages Pinecone client
+│   └── rag_service.py     # RAG: retrieves and builds contextual knowledge
+│
+├── utils/
+│   └── contact_utils.py   # Detects contact queries and returns branch info
+│
+├── main.py                # FastAPI entry point
+├── requirements.txt       
+└── .example.env           # Example environment variables file
 ```
 
 ---
@@ -68,161 +42,53 @@ The system combines:
 
 ### 1️⃣ Clone the Repository
 
-```bash
-git clone https://github.com/yourusername/fes-chatbot-api.git
-cd fes-chatbot-api
-```
-
 ### 2️⃣ Install Dependencies
-
-Make sure you have **Python 3.9+**. Then:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-
 ### 3️⃣ Create `.env` File
 
-In the project root, add:
+rename `.example.env` to `.env` and fill in your credentials:
 
 ```env
 OPENAI_API_KEY=your_openai_api_key_here
 PINECONE_API_KEY=your_pinecone_api_key_here
-PINECONE_ENV=us-east1-gcp
 PINECONE_INDEX=fes-embeddings-data
+PINECONE_ENV=us-east1-gcp
 PINECONE_NAMESPACE=__default__
 ```
 
----
-
-## ▶️ Run the Server
-
-Run locally with **Uvicorn**:
+### 4️⃣ Run the Server from the root folder
 
 ```bash
-uvicorn api:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn app.main:app --reload
 ```
 
-Your API will be live at:
+Your API will be available at:
 👉 [http://localhost:8000](http://localhost:8000)
 
 ---
 
-## 🔌 API Endpoints
+## 🧩 Features
 
-### 1️⃣ `/chat` — Non-streaming (JSON)
+### ✅ Chat Endpoints
 
-**POST**
+* `/chat`: Standard JSON chat response
+* `/stream`: Real-time SSE streaming response
 
-```bash
-curl -X POST "http://localhost:8000/chat" \
-     -H "Content-Type: application/json" \
-     -d '{"query": "universities in the UK"}'
-```
+### 🧠 RAG Integration
 
-**Response Example:**
+* Retrieves relevant context from Pinecone
+* Passes context to OpenAI for enriched, factual replies
 
-```json
-{
-  "response": "🎓 University of Glasgow...\n\n[Retrieved 3 chunks | Response time: 1.52s]"
-}
-```
+### 🛡️ Security & Limits
 
----
+* **Rate limiting** (via `slowapi`) to prevent abuse
+* **Anti-scraping** middleware blocks bot-like agents
+* **CORS restrictions** to secure allowed origins
 
-### 2️⃣ `/stream` — Streaming (SSE)
+### 🧱 Modular Design
 
-**GET**
-
-```bash
-curl -N "http://localhost:8000/stream?q=FES Lahore contact"
-```
-
-**Response:**
-The API will stream partial messages (token-by-token) that you can display in your chat UI in real time.
-
----
-
-## 🧠 System Behavior Summary
-
-### 📞 Contact Queries
-
-Mentora detects contact-related queries using keywords like:
-
-> “contact”, “phone”, “branch”, “address”, “office”, “number”, etc.
-
-It quickly returns:
-
-* Branch name
-* Address
-* Phone
-* Email
-* Link
-
-### 🎓 University Queries
-
-If the query includes country/university names, the API returns structured results with:
-
-* **🎓 Well-Known Programs**
-* **🌟 Highlights**
-* **🤝 How FES Can Help**
-
-### 📰 Blog Queries
-
-For general study-abroad guidance, Mentora uses blog data indexed in Pinecone.
-
----
-
-## 🧱 File Structure
-
-```
-.
-├── api.py                # Main FastAPI application
-├── .env                  # Environment variables
-├── requirements.txt       # Python dependencies (recommended)
-└── README.md             # This file
-```
-
----
-
-## 💡 Customization Tips
-
-* Adjust `SYSTEM_INSTRUCTIONS` to fine-tune tone or content format.
-* Modify `top_k` in `run_rag()` to retrieve more context per query.
-* Add more keywords to `CONTACT_KEYWORDS` or `CITY_HINTS` for better contact detection.
-* In production, **restrict `CORS` origins** to your frontend domain.
-
----
-
-## 🧰 Tech Stack
-
-| Component           | Technology              |
-| ------------------- | ----------------------- |
-| **Framework**       | FastAPI                 |
-| **Streaming**       | SSE via `sse-starlette` |
-| **AI Model**        | OpenAI GPT-4o-mini      |
-| **Vector DB**       | Pinecone                |
-| **Embedding Model** | text-embedding-3-small  |
-| **Language**        | Python 3.9+             |
-
----
-
-## 🛡️ Notes
-
-* Sensitive keys (`OPENAI_API_KEY`, `PINECONE_API_KEY`) must **never** be hardcoded.
-* The app gracefully handles streaming errors and returns friendly fallback messages.
-* `EMBED_CACHE` keeps embeddings in memory for repeated queries — restart clears it.
-
----
-
-## 💬 Example Use Cases
-
-| Query                                       | Response Type                  |
-| ------------------------------------------- | ------------------------------ |
-| “FES Lahore contact”                        | Instant contact details        |
-| “Universities in UK”                        | List of universities under FES |
-| “How to apply for scholarships in Ireland?” | Blog-based study guidance      |
-| “Study visa process Canada”                 | Contextual blog advice         |
-
----
+Each component (RAG, OpenAI, Pinecone, CORS, Security) is isolated for clarity and reusability. You can consult the project structure.
