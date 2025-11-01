@@ -1,11 +1,28 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from app.routers import chat_router
+from fastapi.responses import JSONResponse
 
+from app.routers import chat_router
+from app.core.cors import setup_cors
+from app.core.rate_limit import setup_rate_limiter
+from app.core.security import block_scrapers
+
+# --- App setup ---
 app = FastAPI(title="FES Chatbot API (RAG + SSE)")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# --- Global Middleware & Configs ---
+setup_cors(app)
+setup_rate_limiter(app)
+app.middleware("http")(block_scrapers)
+
+# --- Routers ---
 app.include_router(chat_router.router)
 
+# --- Health Endpoint ---
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+# --- Root Endpoint ---
 @app.get("/")
-def root():
+async def root():
     return {"message": "FES Chatbot API running!"}

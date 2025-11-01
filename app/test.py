@@ -2,17 +2,21 @@ import requests
 import json
 
 BASE_URL = "http://127.0.0.1:8000"
-ENDPOINT = "/chat" 
+ENDPOINT = "/chat"
 
 data = {
     "query": "fes lahore contact"
-    # Add other fields from your ChatRequest schema if required (e.g., "user_id": "test_123")
+}
+
+headers = {
+    "User-Agent": "Mozilla/5.0",  # Must not match blocked agents
+    "Content-Type": "application/json"
 }
 
 print(f"Sending POST request to {BASE_URL}{ENDPOINT}...")
 
 try:
-    response = requests.post(BASE_URL + ENDPOINT, json=data)
+    response = requests.post(BASE_URL + ENDPOINT, headers=headers, json=data)
     response.raise_for_status() 
 
     print("--- Response Received ---")

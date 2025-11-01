@@ -1,7 +1,7 @@
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from pydantic import BaseModel, Field
 
-
+# --- Metadata & Match Models ---
 class Metadata(BaseModel):
     """Metadata attached to each Pinecone match."""
     title: Optional[str] = Field(None, description="Title or slug of the document/blog")
@@ -23,28 +23,25 @@ class Match(BaseModel):
     metadata: Optional[Metadata] = None
 
 
+# --- Chat Models ---
 class ChatRequest(BaseModel):
-    """Schema for chatbot input query."""
-    query: str = Field(..., description="User's question or message for Mentora")
+    """Incoming user query."""
+    query: str = Field(..., description="User's message or question for Mentora")
 
 
 class ChatResponse(BaseModel):
-    """Standardized non-streaming chatbot response."""
-    response: str = Field(..., description="Final chatbot message")
-    matches: Optional[List[Match]] = Field(
-        None, description="Retrieved Pinecone matches that informed the answer"
-    )
-    elapsed_time: Optional[float] = Field(
-        None, description="Processing time (seconds)"
-    )
+    """Standardized chatbot response."""
+    response: str
+    matches: Optional[List[Match]] = None
+    elapsed_time: Optional[float] = None
 
 
 class ErrorResponse(BaseModel):
-    """Schema for API error messages."""
-    error: str = Field(..., description="Description of what went wrong")
+    """Error structure returned by API."""
+    error: str
 
 
 class StreamEvent(BaseModel):
-    """Represents a single SSE event in the /stream endpoint."""
-    event: str = Field(..., description="Event type (usually 'message' or '[DONE]')")
-    data: str = Field(..., description="Chunk of generated content or system info")
+    """Represents a single SSE event."""
+    event: str
+    data: str
