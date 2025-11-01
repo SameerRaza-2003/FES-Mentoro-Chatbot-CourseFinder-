@@ -1,0 +1,53 @@
+From the root folder run this command to run it: 
+python -m uvicorn app.main:app --reload
+
+
+app/
+├── core/
+│   ├── config.py              # Loads environment variables and app settings
+│   ├── cors.py                # CORS middleware setup
+│   └── rate_limit.py          # Request rate limiter (anti-spam)
+│   └── security.py      # Anti Scrapping Middleware
+
+│
+├── models/
+│   └── schemas.py             # Pydantic models for request/response
+│
+├── routers/
+│   └── chat_router.py         # Chat endpoints (/chat and /stream)
+│
+├── services/
+│   ├── openai_service.py      # Handles OpenAI API requests (sync + stream)
+│   ├── pinecone_service.py    # Initializes Pinecone index client
+│   └── rag_service.py         # RAG: retrieves & builds contextual knowledge
+│
+├── utils/
+│   └── contact_utils.py       # Detects contact queries, quick FES contact responses
+│
+└── main.py                    # FastAPI entry point
+└── requirements.txt           
+└── .example.env               # example env
+
+
+## ⚙️ Features
+
+### ✅ Chat Endpoints
+
+* `/chat`: Standard JSON chat response.
+* `/stream`: Server-Sent Events (SSE) streaming for live token responses.
+
+### 🧠 RAG Integration
+
+* Retrieves relevant context from Pinecone vector database.
+* Passes context to OpenAI model for enriched, context-aware replies.
+
+### 🛡️ Security & Limits
+
+* **Rate limiting** (via `slowapi`) prevents abuse / DDoS-style flooding.
+* **Anti-scraping middleware** blocks bot-like User-Agents.
+* **CORS restrictions** for controlled access origins.
+
+
+### 🧱 Modular Design
+
+All major features (rate limiting, CORS, RAG, OpenAI, Pinecone, etc.) are isolated in reusable components.

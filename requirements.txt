@@ -1,6 +1,7 @@
 fastapi
-uvicorn[standard]
+uvicorn
+python-dotenv
 openai
 pinecone
 sse-starlette
-python-dotenv
+slowapi
