@@ -39,7 +39,7 @@ def generate_answer(
 
     resp = client.chat.completions.create(
         model="gpt-4o-mini",
-        temperature=0.3,
+        temperature=0.5,
         messages=messages,
     )
 
