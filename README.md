@@ -16,6 +16,7 @@ app/
 │   ├── cors.py            # CORS middleware setup
 │   ├── rate_limit.py      # Request rate limiter (anti-spam)
 │   └── security.py        # Anti-scraping middleware
+    └── system_prompt.py        # contains base prompt
 │
 ├── models/
 │   └── schemas.py         # Pydantic models for request/response validation

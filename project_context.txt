@@ -1,0 +1,331 @@
+Perfect request 👍
+What you want is a **“LLM-friendly + human-friendly README”** — something that:
+
+* Explains **what each file does**
+* Explains **where to make changes** for features/bugs
+* Lets *anyone (including ChatGPT)* instantly understand the architecture
+* Is suitable for a **real company codebase**
+
+Below is a **production-grade README** you can paste directly into your repo.
+
+---
+
+# 📘 FES Mentora Backend (RAG + Streaming Chat)
+
+This repository contains the backend for **Mentora**, an AI-powered virtual study-abroad counsellor for **FES**.
+The system is built using **FastAPI**, **RAG (Pinecone)**, and **OpenAI**, with support for **real-time streaming**, **contact fast-paths**, and **memory-aware conversations**.
+
+---
+
+## 🚀 How to Run
+
+From the **project root**, run:
+
+```bash
+python -m uvicorn app.main:app --reload
+```
+
+Server will start on:
+
+```
+http://127.0.0.1:8000
+```
+
+---
+
+## 🗂️ Project Structure (High-Level)
+
+```
+app/
+├── core/          # App-wide configuration, middleware, security
+├── models/        # Pydantic request/response schemas
+├── routers/       # API route definitions
+├── services/      # Business logic (LLM, RAG, vector DB)
+├── utils/         # Small helpers and fast-path logic
+└── main.py        # Application entry point
+```
+
+Each folder has a **single responsibility**.
+
+---
+
+## 📁 Detailed Folder & File Breakdown
+
+### 🔹 `app/main.py` — Application Entry Point
+
+**What it does**
+
+* Creates the FastAPI app
+* Registers middleware (CORS, security, rate limits)
+* Includes routers
+
+**When to edit**
+
+* Adding global middleware
+* App startup/shutdown logic
+* Registering new routers
+
+---
+
+### 🔹 `app/core/`
+
+#### `config.py`
+
+**Purpose**
+
+* Loads environment variables
+* Initializes shared clients (OpenAI, Pinecone, etc.)
+
+**Edit this if**
+
+* API keys change
+* Model names change
+* You add new global config values
+
+---
+
+#### `cors.py`
+
+**Purpose**
+
+* Configures allowed frontend origins
+* Controls cross-origin access
+
+**Edit this if**
+
+* New frontend domain is added
+* CORS policy needs tightening/loosening
+
+---
+
+#### `rate_limit.py`
+
+**Purpose**
+
+* Global request rate limiting using `slowapi`
+* Protects against spam and abuse
+
+**Edit this if**
+
+* Rate limits need adjustment
+* You want different limits per route
+
+---
+
+#### `security.py`
+
+**Purpose**
+
+* Anti-scraping / bot protection
+* Blocks suspicious User-Agents
+
+**Edit this if**
+
+* You need stricter bot detection
+* Allowlisting specific agents
+
+---
+
+### 🔹 `app/models/`
+
+#### `schemas.py`
+
+**Purpose**
+
+* Defines Pydantic models for API requests & responses
+
+**Edit this if**
+
+* Request payloads change
+* New endpoints need structured input/output
+
+---
+
+### 🔹 `app/routers/`
+
+#### `chat_router.py`
+
+**Purpose**
+
+* Defines `/chat` (JSON response)
+* Defines `/stream` (SSE streaming response)
+* Orchestrates:
+
+  * Contact fast-path
+  * Conversation memory
+  * RAG
+  * OpenAI calls
+
+**This is the MAIN control file.**
+
+**Edit this if**
+
+* You add a new chat behavior
+* You want to change routing logic
+* You are debugging API behavior
+* You add caching or memory logic
+
+👉 **Most feature requests and bug fixes start here.**
+
+---
+
+### 🔹 `app/services/`
+
+#### `openai_service.py`
+
+**Purpose**
+
+* Handles all OpenAI API interactions
+* Supports:
+
+  * Normal (non-streaming) responses
+  * Streaming token responses
+* Injects:
+
+  * System prompt
+  * Conversation history
+  * Retrieved RAG context
+
+**Edit this if**
+
+* You change the system prompt
+* You change the OpenAI model
+* You adjust temperature or token behavior
+* You modify streaming logic
+
+---
+
+#### `pinecone_service.py`
+
+**Purpose**
+
+* Initializes Pinecone client and index
+* Handles vector DB connection
+
+**Edit this if**
+
+* Pinecone index name changes
+* Pinecone environment changes
+* You migrate vector DB provider
+
+---
+
+#### `rag_service.py`
+
+**Purpose**
+
+* Core RAG logic
+* Responsibilities:
+
+  * Generate embeddings
+  * Query Pinecone
+  * Build structured context from results
+
+**Edit this if**
+
+* Retrieval logic changes
+* You want more/less context
+* You add new document types
+* You tune relevance behavior
+
+---
+
+### 🔹 `app/utils/`
+
+#### `contact_utils.py`
+
+**Purpose**
+
+* Detects contact-related queries (phone, branch, email, address)
+* Returns deterministic, structured responses
+* Bypasses the LLM entirely for accuracy and speed
+
+**Edit this if**
+
+* Contact formatting changes
+* New cities/branches are added
+* Contact detection logic needs tuning
+
+---
+
+## 🧠 Core System Behavior (Important)
+
+### 🔁 Query Flow (Simplified)
+
+```
+Incoming Request
+   ↓
+Is contact query?
+   ├─ Yes → contact_utils (fast, deterministic)
+   └─ No
+        ↓
+Conversation memory (short-term)
+        ↓
+RAG (Pinecone)
+        ↓
+OpenAI response (streaming or non-streaming)
+```
+
+---
+
+### 🧠 Memory Design
+
+* **Short-term conversation memory**
+
+  * Keeps last few user/assistant turns
+  * Enables follow-up questions
+  * Stored in memory (per session)
+
+* **No LLM-based “self memory”**
+
+  * All memory behavior is explicit and deterministic
+  * Prevents hallucination and instability
+
+---
+
+## 🔐 Security & Stability Guarantees
+
+* Rate-limited endpoints
+* Anti-scraping middleware
+* Deterministic contact handling
+* No blocking I/O inside streaming paths
+* Modular services (easy to test and replace)
+
+---
+
+## 🛠️ Where to Work for Common Requests
+
+| Task                   | File to Edit                 |
+| ---------------------- | ---------------------------- |
+| Change chat behavior   | `routers/chat_router.py`     |
+| Change AI tone/prompt  | `services/openai_service.py` |
+| Change retrieval logic | `services/rag_service.py`    |
+| Fix contact responses  | `utils/contact_utils.py`     |
+| Add new endpoint       | `routers/`                   |
+| Change rate limits     | `core/rate_limit.py`         |
+| Add middleware         | `main.py`                    |
+
+---
+
+## ✅ Summary
+
+This backend is designed to be:
+
+* **Modular**
+* **Maintainable**
+* **Production-safe**
+* **LLM-friendly**
+* **Easy to extend**
+
+If you ask ChatGPT (or another engineer) to add a feature or fix a bug, this README provides enough context to **work immediately without guesswork**.
+
+---
+
+If you want, next I can:
+
+* Add a **“How to add a feature”** section
+* Add **architecture diagrams (ASCII or image)**
+* Add **contribution guidelines**
+* Tune this README for **company onboarding**
+
+Just tell me.

@@ -5,6 +5,9 @@ from app.routers import chat_router
 from app.core.cors import setup_cors
 from app.core.rate_limit import setup_rate_limiter
 from app.core.security import block_scrapers
+from app.routers import chat_router, course_router
+
+
 
 # --- App setup ---
 app = FastAPI(title="FES Chatbot API (RAG + SSE)")
@@ -15,7 +18,9 @@ setup_rate_limiter(app)
 app.middleware("http")(block_scrapers)
 
 # --- Routers ---
-app.include_router(chat_router.router)
+app.include_router(chat_router)
+app.include_router(course_router)
+
 
 # --- Health Endpoint ---
 @app.get("/health")

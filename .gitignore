@@ -1,0 +1,77 @@
+# =========================
+# 🐍 Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# =========================
+# 🌐 Virtual Environments
+# =========================
+venv/
+.venv/
+env/
+ENV/
+
+# =========================
+# 🔐 Environment Variables
+# =========================
+.env
+.env.*
+.example.env
+
+# =========================
+# 🗄️ Local Databases
+# =========================
+memory.db
+*.sqlite
+*.sqlite3
+
+# =========================
+# 🧪 Testing / Coverage
+# =========================
+.coverage
+htmlcov/
+.pytest_cache/
+
+# =========================
+# 🧠 IDE / Editors
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+
+# =========================
+# 🖥️ OS Files
+# =========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================
+# 📦 Logs
+# =========================
+*.log
+
+# =========================
+# 🚀 Deployment / Build Artifacts
+# =========================
+*.pid
+*.pid.lock
+*.out
+*.lock
+
+# =========================
+# 🗑️ Temporary Files
+# =========================
+tmp/
+temp/
+.cache/
