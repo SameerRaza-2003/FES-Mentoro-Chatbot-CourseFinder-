@@ -9,63 +9,108 @@ from app.services.openai_service import (
     generate_answer,
     generate_answer_stream
 )
+
 from app.core.long_term_memory import (
     get_cached_response,
     set_cached_response,
 )
 
+from app.services.rag_service import (
+    run_rag,
+    build_final_context
+)
 
-from app.services.rag_service import run_rag, build_context
-from app.utils.contact_utils import is_contact_query, fast_contact_response
-from app.core.conversation_memory import add_message, get_history
+from app.services.freshness_classifier import (
+    needs_web_search
+)
+
+from app.utils.contact_utils import (
+    is_contact_query,
+    fast_contact_response
+)
+
+from app.core.conversation_memory import (
+    add_message,
+    get_history
+)
+
 from app.core.rate_limit import limiter
+
 
 router = APIRouter(tags=["Chat"])
 
 
 # =========================
-# 🟢 REGULAR CHAT ENDPOINT
+# REGULAR CHAT ENDPOINT
 # =========================
 @router.post("/chat")
 @limiter.limit("5/minute")
-def chat(req: ChatRequest, request: Request):
+async def chat(req: ChatRequest, request: Request):
     start = time.time()
-    session_id = request.client.host
+
+    session_id = (
+        request.headers.get("X-Session-ID")
+        or (request.client.host if request.client else "anonymous")
+    )
 
     try:
-        # ⚡ FAST CONTACT PATH
+        # Fast contact path (cheap, no LLM, no web)
         matches = run_rag(req.query, 3)
         if is_contact_query(req.query):
             fast = fast_contact_response(matches, req.query)
             if fast:
                 set_cached_response(req.query, fast, "contact")
-                return {"response": fast, "cached": True}
+                return {
+                    "response": fast,
+                    "cached": True,
+                    "used_web": False
+                }
 
-        # 🧠 LONG-TERM ANSWER CACHE (SAFE)
+        # Long-term answer cache
         cached = get_cached_response(req.query)
         if cached:
-            return {"response": cached, "cached": True}
+            return {
+                "response": cached,
+                "cached": True,
+                "used_web": False
+            }
 
-        if not matches:
-            return {"response": "No relevant info found."}
-
-        # 🧠 SHORT-TERM MEMORY
+        # Short-term conversation memory
         add_message(session_id, "user", req.query)
+        history = get_history(session_id)[-5:]
 
-        context = build_context(matches)
-        history = get_history(session_id)
+        # Semantic decision for web search
+        allow_web = needs_web_search(req.query)
 
-        answer = generate_answer(req.query, context, history)
+        # Build final context
+        context, sources = await build_final_context(
+            req.query,
+            allow_web=allow_web
+        )
 
+        # Single main LLM call
+        answer = generate_answer(
+            req.query,
+            context,
+            history
+        )
+
+        # Append real sources if web was used
+        if allow_web and sources:
+            sources_text = "\n\nSources:\n"
+            for s in sources:
+                sources_text += f"- {s['title']}: {s['url']}\n"
+            answer += sources_text
+
+        # Store assistant response
         add_message(session_id, "assistant", answer)
-
-        # 💾 STORE FINAL ANSWER
         set_cached_response(req.query, answer, "general")
 
         return {
             "response": answer,
             "elapsed_time": round(time.time() - start, 2),
             "cached": False,
+            "used_web": allow_web
         }
 
     except Exception as e:
@@ -74,60 +119,74 @@ def chat(req: ChatRequest, request: Request):
             content={"error": f"Chat processing failed: {str(e)}"},
         )
 
+
 # =========================
-# 🌊 STREAMING CHAT ENDPOINT
+# STREAMING CHAT ENDPOINT
 # =========================
 @router.get("/stream")
 @limiter.limit("5/minute")
 async def stream(request: Request, q: str):
-    session_id = request.client.host
     start = time.time()
 
-    try:
-        matches = run_rag(q, 3)
+    session_id = (
+        request.headers.get("X-Session-ID")
+        or (request.client.host if request.client else "anonymous")
+    )
 
-        async def event_generator():
-            try:
-                if not matches:
-                    yield {"event": "message", "data": "No relevant info found."}
+    async def event_generator():
+        try:
+            # Fast contact path
+            matches = run_rag(q, 3)
+            if is_contact_query(q):
+                fast = fast_contact_response(matches, q)
+                if fast:
+                    yield {"event": "message", "data": fast}
+                    yield {"event": "meta", "data": "used_web=false"}
                     yield {"event": "message", "data": "[DONE]"}
                     return
 
-                # ⚡ FAST CONTACT PATH (NO MEMORY)
-                if is_contact_query(q):
-                    fast = fast_contact_response(matches, q)
-                    if fast:
-                        yield {"event": "message", "data": fast}
-                        yield {"event": "message", "data": "[DONE]"}
-                        return
+            # Short-term memory
+            add_message(session_id, "user", q)
+            history = get_history(session_id)[-5:]
 
-                # 🧠 MEMORY: store user message
-                add_message(session_id, "user", q)
+            # Semantic decision for web search
+            allow_web = needs_web_search(q)
 
-                context = build_context(matches)
-                history = get_history(session_id)
+            # Build final context
+            context, sources = await build_final_context(
+                q,
+                allow_web=allow_web
+            )
 
-                full_response = ""
+            full_response = ""
 
-                async for token in generate_answer_stream(q, context, history):
-                    full_response += token
-                    yield {"event": "message", "data": token}
-                    await asyncio.sleep(0)
+            # Stream LLM output
+            async for token in generate_answer_stream(q, context, history):
+                full_response += token
+                yield {"event": "message", "data": token}
+                await asyncio.sleep(0)
 
-                # 🧠 MEMORY: store assistant response
-                add_message(session_id, "assistant", full_response)
+            # Append sources at the end if web was used
+            if allow_web and sources:
+                yield {"event": "message", "data": "\n\nSources:\n"}
+                for s in sources:
+                    yield {
+                        "event": "message",
+                        "data": f"- {s['title']}: {s['url']}\n"
+                    }
 
-                yield {
-                    "event": "message",
-                    "data": f"[Retrieved {len(matches)} chunks | {time.time()-start:.2f}s]"
-                }
-                yield {"event": "message", "data": "[DONE]"}
+            # Store assistant response
+            add_message(session_id, "assistant", full_response)
 
-            except Exception as e:
-                yield {"event": "error", "data": f"Stream error: {str(e)}"}
-                yield {"event": "message", "data": "[DONE]"}
+            # Send meta info
+            yield {
+                "event": "meta",
+                "data": f"used_web={str(allow_web).lower()}"
+            }
+            yield {"event": "message", "data": "[DONE]"}
 
-        return EventSourceResponse(event_generator())
+        except Exception as e:
+            yield {"event": "error", "data": f"Stream error: {str(e)}"}
+            yield {"event": "message", "data": "[DONE]"}
 
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    return EventSourceResponse(event_generator())

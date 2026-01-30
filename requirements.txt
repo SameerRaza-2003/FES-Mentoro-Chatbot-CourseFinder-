@@ -5,3 +5,7 @@ openai
 pinecone
 sse-starlette
 slowapi
+tavily-python
+redis
+httpx
+tenacity
