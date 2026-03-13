@@ -66,18 +66,26 @@ async def chat(req: ChatRequest, request: Request):
                     "used_web": False
                 }
 
-        # Long-term answer cache
-        cached = get_cached_response(req.query)
+        # Short-term conversation memory (Get history first)
+        history = get_history(session_id)[-5:]
+
+        # Long-term answer cache (Now factoring in history)
+        cached = get_cached_response(req.query, history=history)
         if cached:
+            # Still record the user's message in short-term memory if we hit the cache
+            add_message(session_id, "user", req.query)
+            add_message(session_id, "assistant", cached)
+            
             return {
                 "response": cached,
                 "cached": True,
                 "used_web": False
             }
 
-        # Short-term conversation memory
+        # If not cached, record the user's message for real
         add_message(session_id, "user", req.query)
-        history = get_history(session_id)[-5:]
+        # Re-fetch history to include the current user query for LLM context
+        llm_history = get_history(session_id)[-6:-1] # Exclude current query, get previous 5
 
         # Semantic decision for web search
         allow_web = needs_web_search(req.query)
@@ -92,7 +100,7 @@ async def chat(req: ChatRequest, request: Request):
         answer = generate_answer(
             req.query,
             context,
-            history
+            llm_history
         )
 
         # Append real sources if web was used
@@ -102,9 +110,9 @@ async def chat(req: ChatRequest, request: Request):
                 sources_text += f"- {s['title']}: {s['url']}\n"
             answer += sources_text
 
-        # Store assistant response
+        # Store assistant response short-term and long-term
         add_message(session_id, "assistant", answer)
-        set_cached_response(req.query, answer, "general")
+        set_cached_response(req.query, answer, "general", history=history)
 
         return {
             "response": answer,
@@ -146,8 +154,10 @@ async def stream(request: Request, q: str):
                     return
 
             # Short-term memory
-            add_message(session_id, "user", q)
             history = get_history(session_id)[-5:]
+            add_message(session_id, "user", q)
+            # Re-fetch history to include the current user query for LLM context
+            llm_history = get_history(session_id)[-6:-1] # Exclude current query, get previous 5
 
             # Semantic decision for web search
             allow_web = needs_web_search(q)
@@ -161,7 +171,7 @@ async def stream(request: Request, q: str):
             full_response = ""
 
             # Stream LLM output
-            async for token in generate_answer_stream(q, context, history):
+            async for token in generate_answer_stream(q, context, llm_history):
                 full_response += token
                 yield {"event": "message", "data": token}
                 await asyncio.sleep(0)
