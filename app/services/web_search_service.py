@@ -28,7 +28,7 @@ def get_tavily_client():
 # =========================
 
 @retry(stop=stop_after_attempt(2), wait=wait_fixed(1))
-async def web_search(query: str, max_results: int = 4) -> str:
+async def web_search(query: str, max_results: int = 4) -> dict:
     """
     Performs a live web search using Tavily.
     Safe if Tavily is disabled.
@@ -36,7 +36,7 @@ async def web_search(query: str, max_results: int = 4) -> str:
 
     client = get_tavily_client()
     if not client:
-        return ""
+        return {"content": "", "sources": []}
 
     loop = asyncio.get_event_loop()
 
@@ -50,11 +50,19 @@ async def web_search(query: str, max_results: int = 4) -> str:
     response = await loop.run_in_executor(None, _search)
 
     results = []
+    sources = []
     for r in response.get("results", []):
         results.append(
             f"Title: {r.get('title')}\n"
             f"URL: {r.get('url')}\n"
             f"Content: {r.get('content')}\n"
         )
+        sources.append({
+            "title": r.get("title"),
+            "url": r.get("url")
+        })
 
-    return "\n".join(results)
+    return {
+        "content": "\n".join(results),
+        "sources": sources
+    }

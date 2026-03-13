@@ -52,19 +52,24 @@ _ensure_db()
 # ======================================================
 # HELPERS
 # ======================================================
-def _hash_query(query: str) -> str:
+def _hash_query(query: str, history: Optional[list] = None) -> str:
+    raw = query.lower().strip()
+    if history:
+        for msg in history:
+            raw += f"|{msg.get('role', '')}:{msg.get('content', '')}"
+            
     return hashlib.sha256(
-        query.lower().strip().encode("utf-8")
+        raw.encode("utf-8")
     ).hexdigest()
 
 
 # ======================================================
 # READ FROM CACHE
 # ======================================================
-def get_cached_response(query: str) -> Optional[str]:
+def get_cached_response(query: str, history: Optional[list] = None) -> Optional[str]:
     _ensure_db()
 
-    query_hash = _hash_query(query)
+    query_hash = _hash_query(query, history)
     now = time.time()
 
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
@@ -98,11 +103,12 @@ def get_cached_response(query: str) -> Optional[str]:
 def set_cached_response(
     query: str,
     response: str,
-    response_type: str
+    response_type: str,
+    history: Optional[list] = None
 ) -> None:
     _ensure_db()
 
-    query_hash = _hash_query(query)
+    query_hash = _hash_query(query, history)
 
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     cur = conn.cursor()

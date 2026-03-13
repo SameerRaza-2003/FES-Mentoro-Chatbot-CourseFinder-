@@ -20,34 +20,41 @@ app/
 ├── core/
 │   ├── config.py                 # Env vars + OpenAI/Pinecone/Tavily setup
 │   ├── cors.py                   # CORS middleware
+│   ├── logger.py                 # Custom logging utilities
 │   ├── rate_limit.py             # Rate limiting (anti-spam)
+│   ├── rate_limiter.py           # Rate limiting configuration/implementation
 │   ├── security.py               # Anti-scraping middleware
 │   ├── system_prompt.py          # Master system prompt (FES rules + RAG + web)
 │   ├── long_term_memory.py       # SQLite long-term answer cache (24h TTL)
 │   └── conversation_memory.py    # Short-term conversation memory
 │
 ├── models/
+│   ├── course_schemas.py         # Schemas for course/program features
 │   └── schemas.py                # Pydantic request/response schemas
 │
 ├── routers/
-│   └── chat_router.py            # Chat endpoints (/chat and /stream)
+│   ├── chat_router.py            # Chat endpoints (/chat and /stream)
+│   └── course_router.py          # Course-related routes
 │
 ├── services/
+│   ├── cache_service.py          # Redis cache for Tavily results
+│   ├── course_service.py         # Business logic for courses/programs
+│   ├── freshness_classifier.py   # Web search query freshness detection
 │   ├── openai_service.py         # OpenAI calls (normal + streaming)
 │   ├── pinecone_service.py       # Pinecone vector search
 │   ├── rag_service.py            # RAG + Tavily orchestrator
-│   ├── web_search_service.py     # Tavily web search (lazy + retry-safe)
-│   └── cache_service.py          # Redis cache for Tavily results
+│   └── web_search_service.py     # Tavily web search (lazy + retry-safe)
 │
 ├── utils/
 │   ├── contact_utils.py          # Fast contact/branch queries
-│   ├── search_utils.py           # Tavily trigger logic
-│   └── followup_utils.py         # Follow-up query detection
+│   └── search_utils.py           # Tavily trigger logic
 │
-├── main.py                       # FastAPI app entry point
-├── requirements.txt
-├── memory.db                     # SQLite DB (auto-created)
-└── .example.env                  # Environment variable template
+└── main.py                       # FastAPI app entry point
+
+**Root Files:**
+* `requirements.txt` - Project dependencies
+* `memory.db` - SQLite long-term database (auto-created)
+* `.example.env` - Environment variable template
 ```
 
 ---
@@ -148,6 +155,13 @@ Docs:
 
 * `GET /stream?q=...`
   Real-time SSE streaming responses
+
+---
+
+### 🎓 Course Endpoints
+
+* `POST /courses/search`
+  Semantic search for courses and programs, matching criteria such as query and existing answers without invoking continuous LLM generation.
 
 ---
 
