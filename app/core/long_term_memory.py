@@ -15,7 +15,7 @@ BASE_DIR = os.path.dirname(
 )
 
 DB_PATH = os.path.join(BASE_DIR, "memory.db")
-TTL_SECONDS = 86400  # 24 hours
+TTL_SECONDS = 90 * 24 * 3600  # 3 months
 
 
 # ======================================================
